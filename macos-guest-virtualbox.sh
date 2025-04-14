@@ -246,7 +246,7 @@ if [[ -z "$(gzip --help 2>/dev/null)" ||
 fi
 
 # check that xxd supports endianness -e flag
-if [[ -z "$(xxd -e -p -l 16 /dev/urandom 2>/dev/null)" ]]; then
+if [[ -z "$(xxd -e -ps -l 16 /dev/urandom 2>/dev/null)" ]]; then
     echo "Please make sure a version of xxd which supports the -e option is installed."
     echo -e "The -e option should be listed when executing   ${low_contrast_color}xxd --help${default_color}"
     echo "The package vim-common-8 provides a compatible version on most modern distros."
@@ -575,35 +575,35 @@ function generate_nvram_bin_file() {
     local filename="${namestring}"
     # represent string as string-of-hex-bytes, add null byte after every byte,
     # terminate string with two null bytes
-    local name="$( for (( i = 0 ; i < ${#namestring} ; i++ )); do printf -- "${namestring:${i}:1}" | xxd -p | tr -d '\n'; printf '00'; done; printf '0000' )"
+    local name="$( for (( i = 0 ; i < ${#namestring} ; i++ )); do printf -- "${namestring:${i}:1}" | xxd -ps | tr -d '\n'; printf '00'; done; printf '0000' )"
     # size of string in bytes, represented by eight hex digits, big-endian
     local namesize="$(printf "%08x" $(( ${#name} / 2 )) )"
     # flip four big-endian bytes byte-order to little-endian
-    local namesize="$(printf "${namesize}" | xxd -r -p | xxd -e -g 4 | xxd -r | xxd -p)"
+    local namesize="$(printf "${namesize}" | xxd -r -ps | xxd -e -g 4 | xxd -r | xxd -ps)"
     # strip string-of-hex-bytes representation of data of spaces, "x", "h", etc
-    local data="$(printf -- "${2}" | xxd -r -p | xxd -p)"
+    local data="$(printf -- "${2}" | xxd -r -ps | xxd -ps)"
     # size of data in bytes, represented by eight hex digits, big-endian
     local datasize="$(printf "%08x" $(( ${#data} / 2 )) )"
     # flip four big-endian bytes byte-order to little-endian
-    local datasize="$(printf "${datasize}" | xxd -r -p | xxd -e -g 4 | xxd -r | xxd -p)"
+    local datasize="$(printf "${datasize}" | xxd -r -ps | xxd -e -g 4 | xxd -r | xxd -ps)"
     # guid string-of-hex-bytes is five fields, 8+4+4+4+12 nibbles long
     # first three are little-endian, last two big-endian
     # for example, 0F1A2B3C-4D5E-6A7B-8C9D-A1B2C3D4E5F6
     # is stored as 3C2B1A0F-5E4D-7B6A-8C9D-A1B2C3D4E5F6
-    local g="$( printf -- "${3}" | xxd -r -p | xxd -p )" # strip spaces etc
+    local g="$( printf -- "${3}" | xxd -r -ps | xxd -ps )" # strip spaces etc
     local guid="${g:6:2} ${g:4:2} ${g:2:2} ${g:0:2} ${g:10:2} ${g:8:2} ${g:14:2} ${g:12:2} ${g:16:16}"
     # attributes in four bytes little-endian
     local attributes="07 00 00 00"
     # the data structure
     local entry="${namesize} ${datasize} ${name} ${guid} ${attributes} ${data}"
     # calculate crc32 using gzip, flip crc32 bytes into big-endian
-    local crc32="$(printf "${entry}" | xxd -r -p | gzip -c | tail -c8 | xxd -p -l 4)"
+    local crc32="$(printf "${entry}" | xxd -r -ps | gzip -c | tail -c8 | xxd -ps -l 4)"
     # save binary data
-    printf -- "${entry} ${crc32}" | xxd -r -p - "${vm_name}_${filename}.bin"
+    printf -- "${entry} ${crc32}" | xxd -r -ps - "${vm_name}_${filename}.bin"
 }
 
 # MLB
-MLB_b16="$(printf -- "${MLB}" | xxd -p)"
+MLB_b16="$(printf -- "${MLB}" | xxd -ps)"
 generate_nvram_bin_file "MLB" "${MLB_b16}" "4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14"
 
 # ROM
@@ -615,7 +615,7 @@ ROM_b16="$(for (( i=0; i<${#ROM}; )); do
                    echo -n "${ROM:${j}:2}"
                    let i=i+3
                else
-                   x="$(echo -n "${ROM:${i}:1}" | xxd -p | tr -d ' ')"
+                   x="$(echo -n "${ROM:${i}:1}" | xxd -ps | tr -d ' ')"
                    echo -n "${x}"
                    let i=i+1
                fi
@@ -1420,7 +1420,7 @@ function sleep() {
 function create_viso_header() {
     # input: filename volume-id (two positional parameters, both required)
     # output: nothing to stdout, viso file to working directory
-    local uuid="$(xxd -p -l 16 /dev/urandom)"
+    local uuid="$(xxd -ps -l 16 /dev/urandom)"
     local uuid="${uuid:0:8}-${uuid:8:4}-${uuid:12:4}-${uuid:16:4}-${uuid:20:12}"
     echo "--iprt-iso-maker-file-marker-bourne-sh ${uuid}
     --volume-id=${2}" > "${1}"
